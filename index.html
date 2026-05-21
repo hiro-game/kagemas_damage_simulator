@@ -188,7 +188,10 @@
         </header>
 
         <div class="card">
-            <h2>1. ボスHP・ボーナス設定</h2>
+            <h2 style="display: flex; justify-content: space-between; align-items: center;">
+                1. ボスHP・ボーナス設定
+                <button onclick="resetSettings()" style="font-size: 0.7rem; padding: 2px 8px; cursor: pointer; border: 1px solid #bfdbfe; background: #eff6ff; border-radius: 4px; color: #1e40af;">初期値に戻す</button>
+            </h2>
             <div class="grid">
                 <div class="input-group">
                     <label>ボーナススコア (%)</label>
@@ -251,7 +254,7 @@
     const CONFIG = {
         storageKey: 'raid_calc_settings',
         init: {
-            bonus: 32,
+            bonus: 0,
             hp_h:  32000000,
             hp_vh: 160000000,
             comma: true,
@@ -316,25 +319,48 @@
         });
     }
 
+    function resetSettings() {
+            if (!confirm('設定を初期値に戻しますか？')) return;
+    
+            // 設定を初期値で上書き
+            localStorage.setItem(CONFIG.storageKey, JSON.stringify(CONFIG.init));
+    
+            // 画面の入力値を更新
+            document.getElementById('bonus').value = formatNum(CONFIG.init.bonus);
+            document.getElementById('hp_h').value  = formatNum(CONFIG.init.hp_h);
+            document.getElementById('hp_vh').value = formatNum(CONFIG.init.hp_vh);
+            document.getElementById('sim_mode').value = CONFIG.init.mode;
+    
+            // 再計算と表示更新
+            updateAll();
+        }
+
+    // マウスホイールでのスクロール制御（既存の修正をより厳密に）
     document.addEventListener('wheel', function(e) {
         const el = e.target;
-        if (el.classList.contains('styled-input')) {
-            el.focus();
-            if (el.tagName === 'SELECT') {
-                const idx = el.selectedIndex;
-                if (e.deltaY < 0 && idx > 0) el.selectedIndex = idx - 1;
-                else if (e.deltaY > 0 && idx < el.options.length - 1) el.selectedIndex = idx + 1;
-                el.dispatchEvent(new Event('change'));
-            } else {
-                const step = parseFloat(el.getAttribute('data-step')) || 1;
-                const currentVal = parseNum(el.value);
-                const newVal = e.deltaY < 0 ? currentVal + step : Math.max(0, currentVal - step);
-                el.value = newVal;
-                el.dispatchEvent(new Event('input'));
-            }
-            e.preventDefault();
+        if (el.id === 'sim_mode') { // sim_modeに限定して処理
+            const idx = el.selectedIndex;
+            if (e.deltaY < 0 && idx > 0) el.selectedIndex = idx - 1;
+            else if (e.deltaY > 0 && idx < el.options.length - 1) el.selectedIndex = idx + 1;
+            el.dispatchEvent(new Event('change'));
+            e.preventDefault(); // 画面スクロールを禁止
         }
     }, { passive: false });
+
+    // 矢印キーでのスクロール制御
+    document.addEventListener('keydown', function(e) {
+        const el = document.getElementById('sim_mode');
+        if (document.activeElement === el) {
+            if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                e.preventDefault(); // 画面スクロールを禁止
+                // selectのインデックスを手動操作
+                const idx = el.selectedIndex;
+                if (e.key === 'ArrowUp' && idx > 0) el.selectedIndex = idx - 1;
+                else if (e.key === 'ArrowDown' && idx < el.options.length - 1) el.selectedIndex = idx + 1;
+                el.dispatchEvent(new Event('change'));
+            }
+        }
+    });
 
     function handleCommaToggle() { saveSettings(); refreshAllDisplay(); }
     function handleModeChange() { saveSettings(); syncDmgFromRate(); }
