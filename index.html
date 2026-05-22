@@ -431,8 +431,8 @@ let compareText = "";
             const diffN = nMaxEff > 0 ? (scorePerTicket / nMaxEff * 100).toFixed(1) : "0";
             
             compareText = `
-                <p>ハード最大効率比: <strong>${diffH}%</strong></p>
                 <p>ノーマル最大効率比: <strong>${diffN}%</strong></p>
+                <p>ハード最大効率比: <strong>${diffH}%</strong></p>
             `;
         }
         document.getElementById('sim_result').innerHTML = `
