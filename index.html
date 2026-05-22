@@ -198,6 +198,10 @@
                     <input type="text" id="bonus" class="styled-input" data-step="1" oninput="updateAll()">
                 </div>
                 <div class="input-group">
+                    <label>ノーマル 最大HP</label>
+                    <input type="text" id="hp_n" class="styled-input" data-step="100000" oninput="updateAll()">
+                </div>
+                <div class="input-group">
                     <label>ハード 最大HP</label>
                     <input type="text" id="hp_h" class="styled-input" data-step="100000" oninput="updateAll()">
                 </div>
@@ -270,6 +274,7 @@ const CONFIG = {
             bossData = await response.json();
             
             // 読み込み完了後に画面初期化
+            document.getElementById('hp_n').value = formatNum(bossData.H.hp);
             document.getElementById('hp_h').value = formatNum(bossData.H.hp);
             document.getElementById('hp_vh').value = formatNum(bossData.VH.hp);
             initInputs();
@@ -454,9 +459,9 @@ function resetSettings() {
             <p><strong>判定結果: ${simMode === 'N' ? 'ノーマル' : simMode === 'H' ? 'ハード' : 'ベリーハード'}</strong></p>
             <ul>
                 <li>ダメージ率: <strong>${(dmgRate * 100).toFixed(1)}%</strong></li>
-                <li>獲得スコア(込): <strong>${formatNum(resScore)}</strong></li>
                 <li>獲得GP: <strong>${resGP.toFixed(1)} pt</strong></li>
-                <li>効率(1枚あたり): <strong>${formatNum(scorePerTicket)}</strong></li>
+                <li>獲得スコア: <strong>${formatNum(resScore)}</strong></li>
+                <li>効率(/討伐証): <strong>${formatNum(scorePerTicket)}</strong></li>
             </ul>
             ${compareText}
         `;
