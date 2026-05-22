@@ -321,10 +321,18 @@ const CONFIG = {
         });
     }
 
-    function resetSettings() {
+function resetSettings() {
         if (!confirm('設定を初期値に戻しますか？')) return;
-        localStorage.removeItem(CONFIG.storageKey);
-        location.reload();
+
+        // 1. 設定を初期値で上書きして保存
+        localStorage.setItem(CONFIG.storageKey, JSON.stringify(CONFIG.init));
+
+        // 2. 1.の入力項目のみを初期値に戻す
+        document.getElementById('bonus').value = formatNum(CONFIG.init.bonus);
+        document.getElementById('sim_mode').value = CONFIG.init.mode;
+
+        // 3. ページ全体の再読み込みをせず、現在の設定で再計算のみ実行
+        updateAll();
     }
 
     // マウスホイール・矢印キー制御はそのまま維持
