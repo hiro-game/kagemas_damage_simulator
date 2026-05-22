@@ -426,10 +426,17 @@ const CONFIG = {
         let compareText = "";
         const nMaxEff = (CONFIG.stats.N.score * 2) / CONFIG.stats.N.ticket;
         const hMaxEff = (CONFIG.stats.H.score * 2) / CONFIG.stats.H.ticket;
+        const vhMaxEff = (CONFIG.stats.VH.score * 2) / CONFIG.stats.VH.ticket;
 
         if (simMode === "H") {
             const diffN = nMaxEff > 0 ? (scorePerTicket / nMaxEff * 100).toFixed(1) : "0";
-            compareText = `<p>ノーマル最大効率比: <strong>${diffN}%</strong></p>`;
+            const diffVH = vhMaxEff > 0 ? (scorePerTicket / vhMaxEff * 100).toFixed(1) : "0";
+            
+            compareText = `
+                <p>ノーマル最大効率比: <strong>${diffN}%</strong></p>
+                <p>ベリーハード最大効率比: <strong>${diffVH}%</strong></p>
+                <p style="font-size:0.85rem; color:#dc2626;">※ベリーハード比が100%未満の場合、無理にVHを狙うよりハード周回の方が無駄がありません。</p>
+            `;
         } else if (simMode === "VH") {
             const diffH = hMaxEff > 0 ? (scorePerTicket / hMaxEff * 100).toFixed(1) : "0";
             const diffN = nMaxEff > 0 ? (scorePerTicket / nMaxEff * 100).toFixed(1) : "0";
