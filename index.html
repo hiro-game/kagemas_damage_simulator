@@ -422,11 +422,18 @@ const CONFIG = {
         const resGP = target.gp * Math.min(dmgRate, 1.0);
         const scorePerTicket = resScore / target.ticket;
 
-        let compareText = "";
+let compareText = "";
         if(simMode === "VH") {
             const hMaxEff = (CONFIG.stats.H.score * 2) / CONFIG.stats.H.ticket;
-            const diff = hMaxEff > 0 ? (scorePerTicket / hMaxEff * 100).toFixed(1) : "0";
-            compareText = `<p>ハード最大効率比: <strong>${diff}%</strong></p>`;
+            const nMaxEff = (CONFIG.stats.N.score * 2) / CONFIG.stats.N.ticket; // ノーマル最大効率を計算
+            
+            const diffH = hMaxEff > 0 ? (scorePerTicket / hMaxEff * 100).toFixed(1) : "0";
+            const diffN = nMaxEff > 0 ? (scorePerTicket / nMaxEff * 100).toFixed(1) : "0";
+            
+            compareText = `
+                <p>ハード最大効率比: <strong>${diffH}%</strong></p>
+                <p>ノーマル最大効率比: <strong>${diffN}%</strong></p>
+            `;
         }
         document.getElementById('sim_result').innerHTML = `
             <p><strong>判定結果: ${simMode === 'N' ? 'ノーマル' : simMode === 'H' ? 'ハード' : 'ベリーハード'}</strong></p>
