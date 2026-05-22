@@ -118,11 +118,26 @@
             margin-bottom: 15px;
         }
 
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 12px;
-        }
+.grid {
+    display: grid;
+    gap: 12px;
+    /* デフォルト：スマホ（1列） */
+    grid-template-columns: 1fr;
+}
+
+/* タブレット：画面幅 600px 以上で2列 */
+@media (min-width: 600px) {
+    .grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* PC：画面幅 992px 以上で4列 */
+@media (min-width: 992px) {
+    .grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
 
         .input-group {
             margin-bottom: 0;
@@ -232,18 +247,28 @@
 
     <div class="card">
         <h2>3. 現在の火力シミュレーション</h2>
-        <div class="grid">
+<div class="grid">
             <div class="input-group">
-                <label>現在の挑戦難易度</label>
-                <select id="sim_mode" class="styled-input" onchange="handleModeChange()">
+                <label>挑戦難易度</label>
+                <select id="sim_mode" class="styled-input" onchange="handleModeChange()" onwheel="handleWheel(event)">
                     <option value="N">ノーマル</option>
                     <option value="H">ハード</option>
                     <option value="VH" selected>ベリーハード</option>
                 </select>
             </div>
             <div class="input-group">
+                <label>ブースト倍率</label>
+                <select id="boost_rate" class="styled-input" onchange="calculate()" onwheel="handleWheel(event)">
+                    <option value="1">×1</option>
+                    <option value="2">×2</option>
+                    <option value="3">×3</option>
+                    <option value="4">×4</option>
+                    <option value="5" selected>×5</option>
+                </select>
+            </div>
+            <div class="input-group">
                 <label>与ダメージ量</label>
-                <input type="text" id="current_dmg" class="styled-input" data-step="1000000" oninput="syncRateFromDmg()">
+                <input type="text" id="current_dmg" class="styled-input" oninput="syncRateFromDmg()">
             </div>
             <div class="input-group">
                 <label>ダメージ率 (%)</label>
@@ -255,7 +280,7 @@
 </div>
 
 <script>
-const CONFIG = {
+    const CONFIG = {
         storageKey: 'raid_calc_settings',
         init: { bonus: 0, comma: true, mode: 'VH' },
         stats: {
@@ -273,7 +298,6 @@ const CONFIG = {
             const response = await fetch('boss_data.json');
             bossData = await response.json();
             
-            // 読み込み完了後に画面初期化
             document.getElementById('hp_n').value = formatNum(bossData.N.hp);
             document.getElementById('hp_h').value = formatNum(bossData.H.hp);
             document.getElementById('hp_vh').value = formatNum(bossData.VH.hp);
@@ -283,6 +307,32 @@ const CONFIG = {
             document.getElementById('sim_result').innerHTML = "エラー: boss_data.jsonが読み込めません。サーバー経由で開いてください。";
         }
     }
+
+    // --- イベント制御の一括管理 ---
+    function handleSelectOperation(el, delta, key) {
+        const idx = el.selectedIndex;
+        if (delta < 0 || key === 'ArrowUp') {
+            if (idx > 0) el.selectedIndex = idx - 1;
+        } else {
+            if (idx < el.options.length - 1) el.selectedIndex = idx + 1;
+        }
+        el.dispatchEvent(new Event('change'));
+    }
+
+    document.addEventListener('wheel', function(e) {
+        if (e.target.id === 'sim_mode' || e.target.id === 'boost_rate') {
+            e.preventDefault();
+            handleSelectOperation(e.target, e.deltaY, null);
+        }
+    }, { passive: false });
+
+    document.addEventListener('keydown', function(e) {
+        const el = document.activeElement;
+        if ((el.id === 'sim_mode' || el.id === 'boost_rate') && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+            e.preventDefault();
+            handleSelectOperation(el, 0, e.key);
+        }
+    });
 
     function formatNum(num, isRate = false) {
         if (isRate) return parseFloat(num).toFixed(1);
@@ -328,41 +378,26 @@ const CONFIG = {
     }
 
 function resetSettings() {
-        if (!confirm('設定を初期値に戻しますか？')) return;
+        if (!confirm('ボーナスとボスHPを初期値に戻しますか？')) return;
 
-        // 1. 設定を初期値で上書きして保存
-        localStorage.setItem(CONFIG.storageKey, JSON.stringify(CONFIG.init));
+        // 1. ボーナス設定を初期値(0)で保存
+        const settings = loadSettings();
+        settings.bonus = CONFIG.init.bonus;
+        localStorage.setItem(CONFIG.storageKey, JSON.stringify(settings));
 
-        // 2. 1.の入力項目のみを初期値に戻す
+        // 2. 「ボーナス」入力項目をリセット
         document.getElementById('bonus').value = formatNum(CONFIG.init.bonus);
-        document.getElementById('sim_mode').value = CONFIG.init.mode;
 
-        // 3. ページ全体の再読み込みをせず、現在の設定で再計算のみ実行
+        // 3. ボスHPの入力項目をサーバーからのデータ（初期値）でリセット
+        if (bossData) {
+            document.getElementById('hp_n').value = formatNum(bossData.N.hp);
+            document.getElementById('hp_h').value = formatNum(bossData.H.hp);
+            document.getElementById('hp_vh').value = formatNum(bossData.VH.hp);
+        }
+
+        // 4. 難易度設定は保持したまま全体を再計算
         updateAll();
     }
-
-    // マウスホイール・矢印キー制御はそのまま維持
-    document.addEventListener('wheel', function(e) {
-        const el = e.target;
-        if (el.id === 'sim_mode') {
-            const idx = el.selectedIndex;
-            if (e.deltaY < 0 && idx > 0) el.selectedIndex = idx - 1;
-            else if (e.deltaY > 0 && idx < el.options.length - 1) el.selectedIndex = idx + 1;
-            el.dispatchEvent(new Event('change'));
-            e.preventDefault();
-        }
-    }, { passive: false });
-
-    document.addEventListener('keydown', function(e) {
-        const el = document.getElementById('sim_mode');
-        if (document.activeElement === el && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
-            e.preventDefault();
-            const idx = el.selectedIndex;
-            if (e.key === 'ArrowUp' && idx > 0) el.selectedIndex = idx - 1;
-            else if (e.key === 'ArrowDown' && idx < el.options.length - 1) el.selectedIndex = idx + 1;
-            el.dispatchEvent(new Event('change'));
-        }
-    });
 
     function handleCommaToggle() { saveSettings(); refreshAllDisplay(); }
     function handleModeChange() { saveSettings(); syncDmgFromRate(); }
@@ -384,11 +419,7 @@ function resetSettings() {
         calculate();
     }
 
-    function updateAll() {
-        saveSettings();
-        calculateLines();
-        syncDmgFromRate();
-    }
+    function updateAll() { saveSettings(); calculateLines(); syncDmgFromRate(); }
 
     function refreshAllDisplay() {
         document.querySelectorAll('input[type="text"]').forEach(input => {
@@ -423,63 +454,54 @@ function resetSettings() {
         `;
     }
 
-function calculate() {
+    function calculate() {
         if (!bossData) return;
         const bonusRate = (parseNum(document.getElementById('bonus').value) / 100) + 1;
         const curDmg = parseNum(document.getElementById('current_dmg').value);
         const simMode = document.getElementById('sim_mode').value;
+        const boost = parseInt(document.getElementById('boost_rate').value);
         const target = { ...CONFIG.stats[simMode], hp: bossData[simMode].hp };
 
-        // 1. ダメージ割合の算出
         const dmgRate = target.hp > 0 ? (curDmg / target.hp) : 0;
 
-        // 2. スコア計算：基本スコア×率(切捨て) -> ボーナス乗算(切捨て)
+        // 1回あたりの計算
         const baseVal = Math.floor(target.score * dmgRate);
-        const rawScore = Math.floor(baseVal * bonusRate);
-        const resScore = Math.min(rawScore, target.score * 2);
+        const resScorePerTime = Math.min(Math.floor(baseVal * bonusRate), target.score * 2);
+        const resGPPerTime = Math.floor(target.gp * Math.min(dmgRate, 1.0));
 
-        // 3. GP計算：ダメージ率に応じた獲得GPを計算し、「切り捨て」
-        const resGP = Math.floor(target.gp * Math.min(dmgRate, 1.0));
+        // 倍率を掛けた合計値
+        const totalScore = resScorePerTime * boost;
+        const totalGP = resGPPerTime * boost;
         
-        // 4. 効率計算：1枚あたりのスコアを計算し、「切り捨て」
-        const scorePerTicket = Math.floor(resScore / target.ticket);
+        const scorePerTicket = Math.floor(resScorePerTime / target.ticket);
 
-        // 5. 比較テキスト（Nとの比較のみ）
-// 5. 比較テキスト（Nとの比較のみ）
+        // 比較ロジック（そのまま維持）
         let compareText = "";
         const nMaxEff = Math.floor((CONFIG.stats.N.score * 2) / CONFIG.stats.N.ticket);
         const hMaxEff = Math.floor((CONFIG.stats.H.score * 2) / CONFIG.stats.H.ticket);
         
         if (simMode === "H") {
             const diffN = nMaxEff > 0 ? (scorePerTicket / nMaxEff * 100).toFixed(1) : "0";
-            compareText = `
-                <p>ノーマル最大効率比: <strong>${diffN}%</strong></p>
-                <p style="font-size:0.85rem; color:#666;">※ノーマルで最大スコアを取得した場合と比較した効率比です。<br>100%で討伐証1枚当たりのスコア量がノーマルと同等であることを示します。</p>
-            `;
+            compareText = `<p>ノーマル最大効率比: <strong>${diffN}%</strong></p>`;
         } else if (simMode === "VH") {
             const diffN = nMaxEff > 0 ? (scorePerTicket / nMaxEff * 100).toFixed(1) : "0";
             const diffH = hMaxEff > 0 ? (scorePerTicket / hMaxEff * 100).toFixed(1) : "0";
-            compareText = `
-                <p>ノーマル最大効率比: <strong>${diffN}%</strong><br>
-                ハード最大効率比: <strong>${diffH}%</strong></p>
-                <p style="font-size:0.85rem; color:#666;">※ハードで最大スコアを取得した場合と比較した効率比です。<br>
-                100%で討伐証1枚当たりのスコア量がハードと同等であることを示します。</p>
-            `;
+            compareText = `<p>ノーマル最大効率比: <strong>${diffN}%</strong><br>ハード最大効率比: <strong>${diffH}%</strong></p>`;
         }
 
+        // 表示部分の修正
         document.getElementById('sim_result').innerHTML = `
-            <p><strong>判定結果: ${simMode === 'N' ? 'ノーマル' : simMode === 'H' ? 'ハード' : 'ベリーハード'}</strong></p>
+            <p><strong>判定結果: ${simMode === 'N' ? 'ノーマル' : simMode === 'H' ? 'ハード' : 'ベリーハード'} (ブースト×${boost})</strong></p>
             <ul>
                 <li>ダメージ率: <strong>${(dmgRate * 100).toFixed(1)}%</strong></li>
-                <li>獲得GP: <strong>${resGP} pt</strong></li>
-                <li>獲得スコア(込): <strong>${formatNum(resScore)}</strong></li>
+                <li>合計獲得GP: <strong>${formatNum(totalGP)} pt (${formatNum(resGPPerTime)} pt)</strong></li>
+                <li>合計獲得スコア: <strong>${formatNum(totalScore)} (${formatNum(resScorePerTime)})</strong></li>
                 <li>効率(1枚あたり): <strong>${formatNum(scorePerTicket)}</strong></li>
             </ul>
             ${compareText}
         `;
     }
 
-    // 起動
     init();
 </script>
 
