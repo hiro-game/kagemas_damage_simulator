@@ -274,7 +274,7 @@ const CONFIG = {
             bossData = await response.json();
             
             // 読み込み完了後に画面初期化
-            document.getElementById('hp_n').value = formatNum(bossData.H.hp);
+            document.getElementById('hp_n').value = formatNum(bossData.N.hp);
             document.getElementById('hp_h').value = formatNum(bossData.H.hp);
             document.getElementById('hp_vh').value = formatNum(bossData.VH.hp);
             initInputs();
