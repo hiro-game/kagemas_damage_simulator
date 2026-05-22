@@ -443,7 +443,6 @@ function resetSettings() {
             compareText = `
                 <p>ノーマル最大効率比: <strong>${diffN}%</strong></p>
                 <p>ベリーハード最大効率比: <strong>${diffVH}%</strong></p>
-                <p style="font-size:0.85rem; color:#dc2626;">※ベリーハード比が100%未満の場合、無理にVHを狙うよりハード周回の方が無駄がありません。</p>
             `;
         } else if (simMode === "VH") {
             const diffH = hMaxEff > 0 ? (scorePerTicket / hMaxEff * 100).toFixed(1) : "0";
