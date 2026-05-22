@@ -423,45 +423,47 @@ function resetSettings() {
         `;
     }
 
-    function calculate() {
+function calculate() {
         if (!bossData) return;
-        const bonus = (parseNum(document.getElementById('bonus').value) / 100) + 1;
+        const bonusRate = (parseNum(document.getElementById('bonus').value) / 100) + 1;
         const curDmg = parseNum(document.getElementById('current_dmg').value);
         const simMode = document.getElementById('sim_mode').value;
         const target = { ...CONFIG.stats[simMode], hp: bossData[simMode].hp };
-        
+
+        // 1. ダメージ割合の算出
         const dmgRate = target.hp > 0 ? (curDmg / target.hp) : 0;
-        const rawScore = target.score * dmgRate * bonus;
+
+        // 2. スコア計算：基本スコア×率(切捨て) -> ボーナス乗算(切捨て)
+        const baseVal = Math.floor(target.score * dmgRate);
+        const rawScore = Math.floor(baseVal * bonusRate);
         const resScore = Math.min(rawScore, target.score * 2);
-        const resGP = target.gp * Math.min(dmgRate, 1.0);
-        const scorePerTicket = resScore / target.ticket;
 
-// --- 修正箇所：compareText 作成部分 ---
+        // 3. GP計算：ダメージ率に応じた獲得GPを計算し、「切り捨て」
+        const resGP = Math.floor(target.gp * Math.min(dmgRate, 1.0));
+        
+        // 4. 効率計算：1枚あたりのスコアを計算し、「切り捨て」
+        const scorePerTicket = Math.floor(resScore / target.ticket);
+
+        // 5. 比較テキスト（Nとの比較のみ）
         let compareText = "";
-        const nMaxEff = (CONFIG.stats.N.score * 2) / CONFIG.stats.N.ticket;
-        const hMaxEff = (CONFIG.stats.H.score * 2) / CONFIG.stats.H.ticket;
-        const vhMaxEff = (CONFIG.stats.VH.score * 2) / CONFIG.stats.VH.ticket;
-
+        const nMaxEff = Math.floor((CONFIG.stats.N.score * 2) / CONFIG.stats.N.ticket);
+        
         if (simMode === "H") {
             const diffN = nMaxEff > 0 ? (scorePerTicket / nMaxEff * 100).toFixed(1) : "0";
-            compareText = `
-                <p>ノーマル最大効率比: <strong>${diffN}%</strong></p>
-            `;
+            compareText = `<p>ノーマル最大効率比: <strong>${diffN}%</strong></p>`;
         } else if (simMode === "VH") {
-            const diffN = nMaxEff > 0 ? (scorePerTicket / nMaxEff * 100).toFixed(1) : "0";
+            const hMaxEff = Math.floor((CONFIG.stats.H.score * 2) / CONFIG.stats.H.ticket);
             const diffH = hMaxEff > 0 ? (scorePerTicket / hMaxEff * 100).toFixed(1) : "0";
-            compareText = `
-                <p>ノーマル最大効率比: <strong>${diffN}%</strong></p>
-                <p>ハード最大効率比: <strong>${diffH}%</strong></p>
-            `;
+            compareText = `<p>ハード最大効率比: <strong>${diffH}%</strong></p>`;
         }
+
         document.getElementById('sim_result').innerHTML = `
             <p><strong>判定結果: ${simMode === 'N' ? 'ノーマル' : simMode === 'H' ? 'ハード' : 'ベリーハード'}</strong></p>
             <ul>
                 <li>ダメージ率: <strong>${(dmgRate * 100).toFixed(1)}%</strong></li>
-                <li>獲得GP: <strong>${resGP.toFixed(1)} pt</strong></li>
-                <li>獲得スコア: <strong>${formatNum(resScore)}</strong></li>
-                <li>効率(/討伐証): <strong>${formatNum(scorePerTicket)}</strong></li>
+                <li>獲得GP: <strong>${resGP} pt</strong></li>
+                <li>獲得スコア(込): <strong>${formatNum(resScore)}</strong></li>
+                <li>効率(1枚あたり): <strong>${formatNum(scorePerTicket)}</strong></li>
             </ul>
             ${compareText}
         `;
